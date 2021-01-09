@@ -1,0 +1,255 @@
+import pandas as pd
+import os.path
+import matplotlib.pyplot as plt
+import json
+import time
+import sys
+
+
+#DICHIARAZIONI FUNZIONI
+def sprint(x):
+    """
+    print con effetto
+    macchina da scrivere
+    """
+    for char in x:
+        print(char, end='')
+        sys.stdout.flush()
+        time.sleep(0.05)
+
+def informazioni():
+    """
+    questa funzione ha uno scopo
+    prettamente informativo.
+    Illustra all'utente l'utilità del programma.
+    """
+    TIME_WAIT = 1
+    time.sleep(TIME_WAIT)
+    sprint("""
+    Benvenut*!
+    Questo PROGRAMMA ha un unico scopo:
+    graficare i dati COVID di 191 paesi, raccolti dalla Johns Hopkins University (JHU).
+    
+    I dati in questione sono reperibili al seguente indirizzo:
+    https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv
+    
+    I dati si riferiscono solo alle PERSONE GUARITE - RECOVERED - DAL COVID.
+    
+    Avrai la possibilità di confrontare i dati tra i paesi, digitando il numero di paesi che desideri,
+    oppure controllare i dati di un singolo paese.
+    
+    Per prima cosa scaricheremo il FILE e poi potrai interpellarlo.
+    
+    Devi solo digitare i nomi dei paesi! Inziamo...
+    
+    """)    
+
+DEBUG = True
+def debug_info(message): #funzione per debuggare
+    if DEBUG:
+        print(message)
+
+def get_data():
+    """
+    questa funzione serve per scaricare il FILE
+    dell'Università Johns Hopkins con i dati COVID
+    relativi ai ricoverati di 191 paesi.
+    """
+    DIR = "data"
+    URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+    
+    if not os.path.isdir("data"):
+        os.mkdir("data")
+    
+    fatto = False
+    TIME_WAIT = 2
+    
+    while not fatto:
+        prompt = int(input("Digita (1) per scaricare il FILE, (2) per abbandonare il programma: "))
+        if prompt == 1:
+            filename = DIR + "/" + "data_recovered_glob" + ".json"
+            debug_info(filename)
+
+            if not os.path.isfile(filename): #se non c'è il file nella directory fai tutto quello che devi fare
+                debug_info("FILE %s da scaricare" % filename)
+
+                ok = False
+                while not ok:
+                    try:
+                        df = pd.read_csv(URL)
+                        """
+                        il metodo melt mi permette di manipolare i dati
+                        e costruire un dict array di dict con 6 chiavi.
+                        """
+                        df_ordinato = df.melt(id_vars=["Province/State", "Country/Region", "Lat", "Long"], 
+                                                    var_name="Date", 
+                                                    value_name="Recovered")
+                        ok = True
+                    except:
+                        print("Problemi!")
+                df_ordinato.to_json(filename) #salvare il file in directory locale in formato json
+                print("Il FILE %s è stato scaricato!" % filename)
+                fatto = True
+            else:
+                debug_info("FILE %s già scaricato!" % filename)
+                fatto = True
+        elif prompt == 2:
+            debug_info("Stai chiudendo il programma!")
+            time.sleep(TIME_WAIT)
+            debug_info("Alla prossima... ci vediamo!")
+            debug_info("E forza ROMA!")
+            sys.exit(0) #esce dallo script.
+        else:
+            debug_info("Prendi una decisione: (1) per scaricare il FILE, (2) per abbandonare il programma")
+            
+def input_int():
+    """
+    chiedi in input il numero di
+    regioni di cui visualizzare i dati.
+    """
+    fatto = False
+    while not fatto:
+        try:
+            s = input("Quanti PAESI vuoi controllare? ")
+            n = int(s) #per trasformare l'input in int.
+            fatto = True
+        except ValueError:
+            print("Inserisci un NUMERO!")
+    return n
+
+def input_reg(regioni): #per trovare le regioni
+    """
+    chiedi come input il nome
+    della regione di cui vuoi vedere i dati.
+    regioni = lista delle regioni disponibili
+    """
+    fatto = False
+    while not fatto:
+        s = input("Digita il nome del PAESE: ").upper()
+        if s not in regioni:
+            print("PAESE sconosciuto.")
+            print("I PAESI analizzati dalla JHU sono: ", regioni)
+        else:
+            fatto = True
+    return s
+
+def input_prov(province): # per trovare le province
+    """
+    chiedi come input il nome
+    della provincia di cui vuoi vedere i dati.
+    province = lista delle province disponibili
+    """
+    fatto = False
+    while not fatto:
+        sprint("Questo PAESE ha delle PROVINCE.")
+        v = input("Inserisci PROVINCIA o riconferma PAESE: ").upper()
+        if v not in province:
+            print("PROVINCIA sconosciuta.")
+            print("Le PROVINCE analizzate da JHU sono: ", province)
+        else:
+            fatto = True
+    return v
+
+
+# ESECUZIONE PROGRAMMA
+informazioni() # illustra il programma
+get_data() # scarica il file
+
+# APERTURA FILE SCARICATO
+with open("data/data_recovered_glob.json") as f:
+    file_json = json.load(f)
+
+#DEFINIZIONE DATAFRAME    
+df = pd.DataFrame(file_json)    
+
+    # DUPLICAZIONE COLONNE
+df["Short Date"] = df.loc[:, "Date"] # duplico colonna "Date" chiamandola "Short Date"
+df["Province"] = df.loc[:, "Province/State"] # duplico colonna "Date" chiamandola "Short Date"
+
+    # MANIPOLAZIONE DATA
+df["Short Date"] = pd.to_datetime(df["Date"]) # trasformo valori in "Short Date" da str a datetime
+df["Short Date"] = df["Short Date"].dt.strftime('%d/%m/%Y') # ordinare data
+
+    # UPPER CASE PER COLONNE
+df['Province'] = df['Province'].str.upper()
+df['Province/State'] = df['Province/State'].str.upper()
+df['Country/Region'] = df['Country/Region'].str.upper()
+
+    # ARRAY
+province = df["Province"].unique() #sostituita da c_con_p per completezza
+country = df["Country/Region"].unique() # array dei paesi
+
+    # MANIPOLAZIONE COLONNA PROVINCE
+m = df["Province/State"].isnull() & df["Country/Region"].isin(country)
+df["Province"] = df["Province/State"].mask(m, df["Country/Region"])
+
+    # CREAZIONE DIZIONARIO PAESI CON PROVINCE
+cols = ["Short Date", "Province/State", "Province", "Country/Region", "Recovered"] # colonne che mi interessano nel df
+df_short = df[cols]
+df_none = df_short.dropna(axis=0, subset=['Province']) # per eliminare le righe vuote e avere solo i paesi
+df_solo_con_province = df_none.drop_duplicates(subset=['Province']) # elimino duplicati dei paesi
+
+df_ok = df_solo_con_province.groupby('Country/Region')['Province'].apply(lambda x: x.tolist()) # creo una Series pandas
+df_dict = df_ok.to_dict() # creo dict dalla Series in cui key=paese e value=lista di province
+    # VARIABILI DICT
+keys_country = list(df_dict.keys()) # lista key=paese
+vals_province = list(df_dict.values()) # lista value=province
+
+    # COPIA DF
+df_copy = df.copy()
+df_copy = df_copy.dropna() # eliminare valori None
+df_copy = df_copy.drop_duplicates(subset=['Country/Region']) # eliminare ripetizioni
+c_con_p = df_copy["Country/Region"].unique() # array con solo i paesi con province (australia, cina, danimarca, olanda, uk)
+
+# ALTRE VARIABILI
+n = input_int()
+reg = []
+
+# CICLI PER SELEZIONARE REGIONI
+for stato in range(n):
+    h = input_reg(country)
+    # digita il nome  di un paese in base a 'n'
+        # se il paese ha province
+            # digita il nome della provincia e aggiungi la provincia alla lista 'reg'
+        # altrimenti aggiungi direttamente il paese alla lista 'reg'
+    if h in c_con_p:
+        #chiedi paese o province del paese? se paese aggiungi il paese altrimenti come sotto chiedi provincia
+        prov = df_dict.get(h)
+        k = input_prov(prov) #lista con solo province
+        reg.append(k) # aggiungi la provincia del paese a reg
+    else:
+        reg.append(h) # aggiungi il paese a reg
+
+# CREAZIONE GRAFICO
+plt.figure(figsize=(16, 8))
+        
+for r in reg: 
+    # per ogni paese 'in reg'
+        # se il paese si trova in 'province'
+            # applica il filtro con "Province"
+        # altrimenti
+            # applica "Country/Region"
+        # plottami il grafico di ogni paese
+    if r in c_con_p: # per i paesi con province
+        filtro = df_short["Province"] == r
+    elif r in province: # per le province
+        filtro = df_short["Province"] == r
+    else: # per i tutti gli altri paesi
+        filtro = df_short["Country/Region"] == r
+    plt.plot(df_short[filtro]["Short Date"], df_short[filtro]["Recovered"])
+
+# TITOLO E LEGENDA GRAFICO        
+plt.title("RECOVERED x TIME")
+    #todo: titolo con variabile
+plt.legend(reg, bbox_to_anchor=(1.05, 1), loc='upper left') # posizione e nomi legenda
+
+# MANIPOLAZIONE ASSI
+plt.xlabel(df.columns[4].upper()) # per ottenere il nome della colonna "DATA"
+plt.ylabel(df_short.columns[-1].upper()) # per ottenere il nome della colonna "RECOVERED"
+plt.xticks(rotation=45)
+plt.xticks(df_short[filtro]["Short Date"][::14]) # vedi edichetta asse x ogni tot (14gg) 
+    #todo: tagliare la parte finale della data.
+
+# OUTPUT GRAFICO
+plt.grid() # per visualizzare griglia
+plt.show() # per mostrare il grafico
