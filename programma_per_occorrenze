@@ -1,0 +1,89 @@
+testo = """
+Inserire tra queste
+virgolette il testo da
+analizzare.
+"""
+
+#librerie necessarie per l'esecuzione dell'analisi
+import nltk
+import operator
+from collections import Counter 
+from stop_words import get_stop_words
+from nltk.corpus import stopwords
+#nltk.download('punkt') #pacchetto da scaricare. eliminare primo '#' se necessario
+
+#definizione di funzioni
+def toglipunt(test_str):
+    """
+    questa funzione serve per
+    eliminare la punteggiatura.
+    """    
+    punc = '"£!()-[]{};:\,<>./?@$%^#&*_~"'
+    for ele in test_str: 
+        if ele in punc: 
+            test_str = test_str.replace(ele, " ")
+    return test_str
+
+def togliemo(test_str):
+    """
+    questa funzione serve per
+    eliminare tutte le emoticon.
+    se si utilizza anche questa, eseguire
+    la precedente funz è superfluo.
+    """
+    emo = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '
+    for ele in test_str: 
+        if ele not in emo: 
+            test_str = test_str.replace(ele, "")
+    return test_str
+
+# esecuzione di funzioni
+testo = toglipunt(testo)
+testo = togliemo(testo)
+
+# eliminazione parole vuote e creazine lista da messaggio
+messaggi_social = testo.lower() # trasforma messaggi in minuscolo per evitare case sensitivy
+tokens = nltk.word_tokenize(messaggi_social) # trasformo messaggi in lista
+
+# variabili fisse
+parole_vuote = list(get_stop_words('it'))   
+nltk_words = list(stopwords.words('italian')) 
+# stop_words.extend(nltk_words) #valutare
+messaggi_lista = []
+
+# ciclo elimina parole vuote e verbi
+for parola in tokens:
+    # per ogni parola in tokens
+        #s e non si trova nell'elenco delle parole vuote
+            # allora metti la parola in una nuova lista
+    if not parola in parole_vuote:
+        messaggi_lista.append(parola)
+
+# creare dizionario con contatore elementi da lista messagio pulito
+dizionario = {}
+for c in range(len(messaggi_lista)):
+    dizionario[messaggi_lista[c]] = messaggi_lista.count(messaggi_lista[c])
+
+parole_in_ordine = dict(sorted(dizionario.items(),
+                    key=operator.itemgetter(1),reverse=True)) # per ordine decrescente
+
+# output analisi
+print(parole_in_ordine)
+
+"""
+per confrontare più testi copiate l'output in una variabile nuova:
+ogni volta che cambiate la variabile 'testo',
+copiate il print della variabile 'parole_in_ordine'
+in una nuova variabile. Le nuove variabili
+saranno tutti dict python.
+"""
+# definizione dict
+# aggiungete qui i dict ottenuti da sopra. cancellate questa riga quando inserite 2 o più dict
+
+# unire dizionari aggiungengo values se key comuni
+# modificate 'nome_dict' con i nomi dei vostri dict
+totale = Counter(nome_dict1) + Counter(nome_dict2) + Counter(nome_dict3)
+
+# output finale con dict sommati
+print('Totale Occorrenze Parole:')
+print(totale)
